@@ -11,329 +11,377 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="settings-wrapper">
-      <header class="settings-header">
-        <div class="header-info">
-          <h2>Configuracion del Sistema</h2>
-          <p class="subtitle">
-            Ajusta los parametros de conexion a Supabase y al nodo AI-Thinker ESP32-CAM
-          </p>
+    <div class="scada-settings">
+      <header class="settings-toolbar">
+        <div class="toolbar-left">
+          <span class="toolbar-tag">PARAMETROS</span>
+          <span class="toolbar-title">Configuracion de Enlaces y Dimensiones</span>
         </div>
       </header>
 
       @if (mensajeGuardado()) {
-        <div class="save-toast">
-          {{ mensajeGuardado() }}
+        <div class="save-toast" role="status">
+          <span class="toast-pip"></span>
+          <span>{{ mensajeGuardado() }}</span>
         </div>
       }
 
       <div class="settings-grid">
-        <!-- Tarjeta 1: Parametros de Supabase -->
-        <div class="settings-card">
-          <div class="card-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <ellipse cx="12" cy="5" rx="9" ry="3" />
-              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-            </svg>
-            <h3>Credenciales Supabase Cloud</h3>
+        <!-- Tarjeta 1: Credenciales Supabase -->
+        <section class="config-panel">
+          <div class="panel-head">
+            <span class="panel-idx">01</span>
+            <h3 class="panel-name">Enlace Supabase Cloud</h3>
           </div>
 
-          <div class="form-group">
-            <label for="url">Supabase Project URL:</label>
-            <input
-              id="url"
-              type="text"
-              [(ngModel)]="formData.supabaseUrl"
-              placeholder="https://xyz.supabase.co"
-            />
-            <span class="hint">Endpoint del proyecto PostgreSQL y PostgREST</span>
+          <div class="panel-body">
+            <div class="input-block">
+              <label for="url">Endpoint REST / RPC:</label>
+              <input
+                id="url"
+                type="text"
+                class="mono-val"
+                [(ngModel)]="formData.supabaseUrl"
+                placeholder="https://xyz.supabase.co"
+                autocomplete="off"
+              />
+              <span class="input-hint">Host del servidor PostgreSQL PostgREST</span>
+            </div>
+
+            <div class="input-block">
+              <label for="key">Anon / Publishable API Key:</label>
+              <input
+                id="key"
+                type="password"
+                class="mono-val"
+                [(ngModel)]="formData.supabaseAnonKey"
+                placeholder="sb_publishable_... o eyJhbGci..."
+                autocomplete="off"
+              />
+              <span class="input-hint">Clave publica para sincronizacion WebSocket y lectura</span>
+            </div>
+
+            <div class="test-block">
+              <button
+                type="button"
+                class="btn-test"
+                (click)="probarSupabase()"
+                [disabled]="probandoSupabase()"
+              >
+                {{ probandoSupabase() ? 'Verificando conexion...' : 'Probar Conexion Supabase' }}
+              </button>
+
+              @if (resultadoSupabase()) {
+                <span class="test-badge" [class.ok]="exitoSupabase()">
+                  {{ resultadoSupabase() }}
+                </span>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- Tarjeta 2: Red Local ESP32 y Escala Volumetrica -->
+        <section class="config-panel">
+          <div class="panel-head">
+            <span class="panel-idx">02</span>
+            <h3 class="panel-name">Nodo ESP32-CAM y Dimensiones</h3>
           </div>
 
-          <div class="form-group">
-            <label for="key">Supabase Publishable / Anon Key:</label>
-            <input
-              id="key"
-              type="password"
-              [(ngModel)]="formData.supabaseAnonKey"
-              placeholder="sb_publishable_... o eyJhbGci..."
-            />
-            <span class="hint">Clave publica para suscripcion Realtime y consultas de lectura</span>
-          </div>
+          <div class="panel-body">
+            <div class="input-block">
+              <label for="ip">Direccion IP local ESP32 (LAN):</label>
+              <input
+                id="ip"
+                type="text"
+                class="mono-val"
+                [(ngModel)]="formData.esp32Ip"
+                placeholder="192.168.1.50"
+                autocomplete="off"
+              />
+              <span class="input-hint">Para comandos directos en la misma subred WiFi (/api/estado)</span>
+            </div>
 
-          <div class="card-actions">
-            <button
-              type="button"
-              class="btn-outline"
-              (click)="probarSupabase()"
-              [disabled]="probandoSupabase()"
-            >
-              {{ probandoSupabase() ? 'Verificando...' : 'Probar Conexion Supabase' }}
-            </button>
-            @if (resultadoSupabase()) {
-              <span class="test-result" [class.success]="exitoSupabase()">
-                {{ resultadoSupabase() }}
-              </span>
-            }
-          </div>
-        </div>
+            <div class="input-block">
+              <label for="intervalo">Intervalo de refresco de respaldo (segundos):</label>
+              <input
+                id="intervalo"
+                type="number"
+                min="5"
+                max="120"
+                class="mono-val"
+                [(ngModel)]="formData.intervaloRefrescoSeg"
+              />
+              <span class="input-hint">Periodo de consulta en caso de bloqueo de WebSockets</span>
+            </div>
 
-        <!-- Tarjeta 2: Red Local ESP32 y Geometria -->
-        <div class="settings-card">
-          <div class="card-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
-              <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
-              <line x1="6" y1="6" x2="6.01" y2="6" />
-              <line x1="6" y1="18" x2="6.01" y2="18" />
-            </svg>
-            <h3>Nodo ESP32-CAM y Dimensiones</h3>
-          </div>
+            <div class="input-block">
+              <label for="modo">Escala geometrica del tanque:</label>
+              <select id="modo" [(ngModel)]="formData.modoTanque">
+                <option value="prototipo_7l">Prototipo Laboratorio (7 Litros · Botella PET)</option>
+                <option value="real_1100l">Tanque Domestico Rotoplas (1100 Litros)</option>
+              </select>
+              <span class="input-hint">Ajusta los limites de la regla y el calculo de autonomia</span>
+            </div>
 
-          <div class="form-group">
-            <label for="ip">Direccion IP local del ESP32 (Opcional):</label>
-            <input
-              id="ip"
-              type="text"
-              [(ngModel)]="formData.esp32Ip"
-              placeholder="Ej: 192.168.1.50"
-            />
-            <span class="hint">Permite consultas directas en LAN (/api/estado y forzar turbidez)</span>
-          </div>
+            <div class="test-block">
+              <button
+                type="button"
+                class="btn-test"
+                (click)="probarEsp32()"
+                [disabled]="probandoEsp32() || !formData.esp32Ip"
+              >
+                {{ probandoEsp32() ? 'Pingeando nodo...' : 'Probar Conexion LAN' }}
+              </button>
 
-          <div class="form-group">
-            <label for="intervalo">Intervalo de refresco de respaldo (segundos):</label>
-            <input
-              id="intervalo"
-              type="number"
-              min="5"
-              max="120"
-              [(ngModel)]="formData.intervaloRefrescoSeg"
-            />
-            <span class="hint">Frecuencia de sondeo cuando WebSockets no este disponible (min. 5s)</span>
+              @if (resultadoEsp32()) {
+                <span class="test-badge" [class.ok]="exitoEsp32()">
+                  {{ resultadoEsp32() }}
+                </span>
+              }
+            </div>
           </div>
-
-          <div class="form-group">
-            <label for="modo">Modo geometrico del tanque:</label>
-            <select id="modo" [(ngModel)]="formData.modoTanque">
-              <option value="prototipo_7l">Prototipo de Laboratorio (7 Litros)</option>
-              <option value="real_1100l">Tanque Domestico Rotoplas (1100 Litros)</option>
-            </select>
-            <span class="hint">Define la escala volumetrica para los indicadores y calculo de dias</span>
-          </div>
-
-          <div class="card-actions">
-            <button
-              type="button"
-              class="btn-outline"
-              (click)="probarEsp32()"
-              [disabled]="probandoEsp32() || !formData.esp32Ip"
-            >
-              {{ probandoEsp32() ? 'Pingeando...' : 'Probar Conexion ESP32 LAN' }}
-            </button>
-            @if (resultadoEsp32()) {
-              <span class="test-result" [class.success]="exitoEsp32()">
-                {{ resultadoEsp32() }}
-              </span>
-            }
-          </div>
-        </div>
+        </section>
       </div>
 
-      <!-- Barra inferior de acciones principales -->
-      <div class="settings-bottom-bar">
-        <button type="button" class="btn-reset" (click)="restablecerPredeterminados()">
+      <!-- Barra de acciones de guardado -->
+      <footer class="settings-actions-bar">
+        <button type="button" class="btn-restore" (click)="restablecerPredeterminados()">
           Restablecer Valores Iniciales
         </button>
 
-        <button type="button" class="btn-save" (click)="guardarConfiguracion()">
-          Guardar y Aplicar Cambios
+        <button type="button" class="btn-commit" (click)="guardarConfiguracion()">
+          Guardar y Aplicar Ajustes
         </button>
-      </div>
+      </footer>
     </div>
   `,
   styles: [`
-    .settings-wrapper {
+    .scada-settings {
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 14px;
       width: 100%;
     }
 
-    .settings-header {
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border-color, #334155);
+    .settings-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
     }
 
-    .header-info h2 {
-      margin: 0;
-      font-size: 1.5rem;
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-tag {
+      font-size: 0.65rem;
       font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.02em;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 3px;
+      background-color: var(--bg-surface-raised);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-medium);
     }
 
-    .subtitle {
-      margin: 4px 0 0;
-      font-size: 0.875rem;
-      color: var(--text-muted, #94a3b8);
+    .toolbar-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
     }
 
     .save-toast {
-      padding: 12px 18px;
-      border-radius: 10px;
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      color: #10b981;
-      font-size: 0.9rem;
-      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 5px;
+      background-color: var(--status-normal-bg);
+      border: 1px solid var(--status-normal-border);
+      color: var(--status-normal);
+      font-size: 0.8rem;
+    }
+
+    .toast-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--status-normal);
     }
 
     .settings-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
     }
 
-    .settings-card {
-      background: var(--card-bg, #1e293b);
-      border: 1px solid var(--border-color, #334155);
-      border-radius: 16px;
-      padding: 22px;
+    .config-panel {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: 6px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
     }
 
-    .card-title {
+    .panel-head {
       display: flex;
       align-items: center;
-      gap: 10px;
-      color: #38bdf8;
+      gap: 8px;
+      padding: 10px 14px;
+      background-color: var(--bg-surface-raised);
+      border-bottom: 1px solid var(--border-medium);
     }
 
-    .card-title svg {
-      width: 22px;
-      height: 22px;
+    .panel-idx {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--status-info);
     }
 
-    .card-title h3 {
+    .panel-name {
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      color: #ffffff;
+      color: var(--text-primary);
     }
 
-    .form-group {
+    .panel-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .input-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-block label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .input-block input, .input-block select {
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-medium);
+      border-radius: 4px;
+      padding: 8px 10px;
+      color: var(--text-primary);
+      font-size: 0.82rem;
+      min-height: var(--touch-target-min);
+    }
+
+    .input-block input:focus, .input-block select:focus {
+      outline: none;
+      border-color: var(--status-info);
+    }
+
+    .input-hint {
+      font-size: 0.68rem;
+      color: var(--text-tertiary);
+    }
+
+    .test-block {
       display: flex;
       flex-direction: column;
       gap: 6px;
-    }
-
-    .form-group label {
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.9);
-    }
-
-    .form-group input, .form-group select {
-      background: #0f172a;
-      border: 1px solid var(--border-color, #334155);
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #ffffff;
-      font-size: 0.9rem;
-      font-family: inherit;
-    }
-
-    .form-group input:focus, .form-group select:focus {
-      outline: none;
-      border-color: #0284c7;
-      box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
-    }
-
-    .hint {
-      font-size: 0.75rem;
-      color: var(--text-muted, #94a3b8);
-    }
-
-    .card-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
       margin-top: 4px;
     }
 
-    .btn-outline {
-      padding: 8px 14px;
-      border-radius: 8px;
-      background: transparent;
-      border: 1px solid #475569;
-      color: #ffffff;
-      font-size: 0.825rem;
-      font-weight: 500;
-      cursor: pointer;
+    .btn-test {
       align-self: flex-start;
-      transition: background 0.2s;
+      padding: 6px 12px;
+      border-radius: 4px;
+      background-color: var(--bg-surface-raised);
+      border: 1px solid var(--border-medium);
+      color: var(--text-primary);
+      font-size: 0.75rem;
+      cursor: pointer;
+      min-height: var(--touch-target-min);
     }
 
-    .btn-outline:hover:not(:disabled) {
-      background: #334155;
+    .btn-test:hover:not(:disabled) {
+      background-color: var(--bg-surface-hover);
     }
 
-    .btn-outline:disabled {
+    .btn-test:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
 
-    .test-result {
-      font-size: 0.8rem;
-      color: #ef4444;
+    .test-badge {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: var(--status-crit);
     }
 
-    .test-result.success {
-      color: #10b981;
+    .test-badge.ok {
+      color: var(--status-normal);
     }
 
-    .settings-bottom-bar {
+    .settings-actions-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
+      padding-top: 6px;
       flex-wrap: wrap;
-      padding-top: 10px;
     }
 
-    .btn-reset {
-      padding: 10px 18px;
-      border-radius: 8px;
-      background: transparent;
-      border: 1px solid #475569;
-      color: var(--text-muted, #94a3b8);
-      font-size: 0.875rem;
+    .btn-restore {
+      padding: 8px 16px;
+      border-radius: 4px;
+      background-color: transparent;
+      border: 1px solid var(--border-medium);
+      color: var(--text-secondary);
+      font-size: 0.8rem;
       cursor: pointer;
+      min-height: var(--touch-target-min);
     }
 
-    .btn-reset:hover {
-      background: #334155;
-      color: #ffffff;
+    .btn-restore:hover {
+      color: var(--text-primary);
+      border-color: var(--border-strong);
     }
 
-    .btn-save {
-      padding: 10px 24px;
-      border-radius: 8px;
-      background: #0284c7;
-      color: #ffffff;
-      font-size: 0.9rem;
-      font-weight: 600;
+    .btn-commit {
+      padding: 8px 20px;
+      border-radius: 4px;
+      background-color: var(--status-info);
       border: none;
+      color: #ffffff;
+      font-size: 0.82rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      min-height: var(--touch-target-min);
+      transition: opacity 0.15s ease;
     }
 
-    .btn-save:hover {
-      background: #0369a1;
+    .btn-commit:hover {
+      opacity: 0.9;
+    }
+
+    @media (max-width: 600px) {
+      .settings-actions-bar {
+        flex-direction: column-reverse;
+        align-items: stretch;
+      }
+      .btn-restore, .btn-commit, .btn-test {
+        width: 100%;
+        text-align: center;
+      }
     }
   `]
 })
@@ -360,14 +408,14 @@ export class SettingsComponent {
       await this.supabase.cargarEstadoActual();
       if (this.supabase.estadoActual()) {
         this.exitoSupabase.set(true);
-        this.resultadoSupabase.set('Conexion con Supabase exitosa (fila id = 1 leida)');
+        this.resultadoSupabase.set('OK: Fila id=1 leida exitosamente');
       } else {
         this.exitoSupabase.set(false);
-        this.resultadoSupabase.set(this.supabase.errorConexion() || 'No se recibio respuesta de estado_tanque');
+        this.resultadoSupabase.set(this.supabase.errorConexion() || 'Sin datos de estado');
       }
-    } catch (err: unknown) {
+    } catch {
       this.exitoSupabase.set(false);
-      this.resultadoSupabase.set('Error al conectar con Supabase');
+      this.resultadoSupabase.set('Fallo de conexion con Supabase');
     } finally {
       this.probandoSupabase.set(false);
     }
@@ -381,14 +429,14 @@ export class SettingsComponent {
       const res = await this.esp32Local.obtenerEstadoLocal(this.formData.esp32Ip);
       if (res) {
         this.exitoEsp32.set(true);
-        this.resultadoEsp32.set(`Conexion LAN exitosa con ${res.dispositivo}`);
+        this.resultadoEsp32.set(`OK: ${res.dispositivo} respondio`);
       } else {
         this.exitoEsp32.set(false);
-        this.resultadoEsp32.set(this.esp32Local.errorLocal() || 'Sin respuesta del ESP32');
+        this.resultadoEsp32.set(this.esp32Local.errorLocal() || 'Sin respuesta LAN');
       }
     } catch {
       this.exitoEsp32.set(false);
-      this.resultadoEsp32.set('Fallo de comunicacion con el ESP32');
+      this.resultadoEsp32.set('Fallo de red LAN con ESP32');
     } finally {
       this.probandoEsp32.set(false);
     }
@@ -396,8 +444,8 @@ export class SettingsComponent {
 
   guardarConfiguracion(): void {
     this.supabase.actualizarConfiguracion(this.formData);
-    this.mensajeGuardado.set('Configuracion guardada exitosamente y servicios reinicializados.');
-    setTimeout(() => this.mensajeGuardado.set(null), 5000);
+    this.mensajeGuardado.set('Ajustes guardados y aplicados correctamente.');
+    setTimeout(() => this.mensajeGuardado.set(null), 4000);
   }
 
   restablecerPredeterminados(): void {

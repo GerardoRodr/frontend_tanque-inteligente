@@ -6,202 +6,301 @@ import { DecimalPipe } from '@angular/common';
   standalone: true,
   imports: [DecimalPipe],
   template: `
-    <div class="tank-container">
-      <!-- Indicador superior del sensor de tapa -->
-      <div class="lid-status" [class.lid-open]="tapaAbierta()">
-        <div class="lid-indicator-icon">
-          @if (tapaAbierta()) {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 10h16M7 10V6a2 2 0 012-2h6a2 2 0 012 2v4M12 14v4M12 18l3-3M12 18l-3-3" />
-            </svg>
-          } @else {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          }
+    <div class="scada-tank-card">
+      <!-- Encabezado de instrumentacion fisica -->
+      <div class="tank-card-header">
+        <div class="sensor-title">
+          <span class="sensor-tag">DEPOSITO</span>
+          <span class="tank-mode-label">{{ capacidadTotal() > 10 ? 'Rotoplas 1100 L' : 'Prototipo PET 7 L' }}</span>
         </div>
-        <div class="lid-text">
-          <span class="lid-title">Tapa del Tanque:</span>
-          <strong>{{ tapaAbierta() ? 'ABIERTA' : 'CERRADA' }}</strong>
+
+        <!-- Estado del sensor magnetico de tapa MC-38 -->
+        <div class="lid-badge" [class.lid-open]="tapaAbierta()">
+          <span class="lid-pip"></span>
+          <span class="lid-label">Tapa: <strong>{{ tapaAbierta() ? 'ABIERTA' : 'CERRADA' }}</strong></span>
           @if (tapaAbierta() && segundosTapaAbierta() > 0) {
-            <span class="lid-timer">({{ segundosTapaAbierta() }} s)</span>
+            <span class="lid-secs">({{ segundosTapaAbierta() }}s)</span>
           }
         </div>
       </div>
 
-      <!-- Representacion visual del cilindro del tanque -->
-      <div class="cylinder-wrapper">
-        <div class="cylinder-glass">
-          <!-- Marcas de escala y porcentaje -->
-          <div class="level-marks">
-            <span class="mark m-100">100%</span>
-            <span class="mark m-75">75%</span>
-            <span class="mark m-50">50%</span>
-            <span class="mark m-25">25%</span>
-            <span class="mark m-0">0%</span>
+      <!-- Esquema visual del tanque HMI / SCADA -->
+      <div class="scada-visual-container">
+        <!-- Regla de medicion y escala volumetrica lateral -->
+        <div class="scale-ruler" aria-hidden="true">
+          <div class="ruler-mark mark-100">
+            <span class="tick-label">{{ capacidadTotal() | number:'1.0-0' }} L</span>
+            <span class="tick-line"></span>
+          </div>
+          <div class="ruler-mark mark-75">
+            <span class="tick-label">{{ (capacidadTotal() * 0.75) | number:'1.0-1' }} L</span>
+            <span class="tick-line"></span>
+          </div>
+          <div class="ruler-mark mark-50">
+            <span class="tick-label">{{ (capacidadTotal() * 0.5) | number:'1.0-1' }} L</span>
+            <span class="tick-line"></span>
+          </div>
+          <div class="ruler-mark mark-25">
+            <span class="tick-label">{{ (capacidadTotal() * 0.25) | number:'1.0-1' }} L</span>
+            <span class="tick-line"></span>
+          </div>
+          <div class="ruler-mark mark-0">
+            <span class="tick-label">0 L</span>
+            <span class="tick-line"></span>
+          </div>
+        </div>
+
+        <!-- Cuerpo del cilindro del tanque -->
+        <div class="cylinder-structure">
+          <!-- Cabezal superior: Sensor ultrasonico JSN-SR04T -->
+          <div class="sensor-probe-top" title="Sensor Ultrasonico JSN-SR04T (IO12 / IO13)">
+            <div class="probe-hardware">
+              <span class="probe-label">JSN-SR04T</span>
+            </div>
+            <!-- Cono de medicion hacia el espejo de agua -->
+            <div class="acoustic-beam" [style.height.%]="distanciaProporcional()"></div>
           </div>
 
-          <!-- Cuerpo liquido con altura calculada -->
-          <div
-            class="water-body"
-            [style.height.%]="porcentajeNormalizado()"
-            [style.background]="gradienteAgua()"
-          >
-            <!-- Efecto de ondas en la superficie del agua -->
-            <div class="water-wave wave-1" [style.background]="colorOnda()"></div>
-            <div class="water-wave wave-2" [style.background]="colorOndaSecundaria()"></div>
+          <!-- Camara de fluido -->
+          <div class="fluid-chamber">
+            <div
+              class="liquid-mass"
+              [style.height.%]="porcentajeNormalizado()"
+              [style.background]="colorLiquido()"
+            >
+              <!-- Linea del menisco superficial -->
+              <div class="meniscus-line" [style.background]="colorMenisco()"></div>
+            </div>
+
+            <!-- Panel de lectura sobrepuesta en el cilindro -->
+            <div class="telemetry-readout">
+              <div class="readout-percent mono-val">{{ porcentajeNormalizado() | number:'1.1-1' }}%</div>
+              <div class="readout-liters mono-val">{{ litros() | number:'1.2-2' }} L</div>
+            </div>
           </div>
 
-          <!-- Lectura central sobrepuesta -->
-          <div class="tank-overlay-info">
-            <div class="percent-display">{{ porcentajeNormalizado() | number:'1.0-1' }}%</div>
-            <div class="volume-display">{{ litros() | number:'1.2-2' }} L / {{ capacidadTotal() | number:'1.0-1' }} L</div>
-            <div class="height-display">Columna: {{ alturaAguaCm() | number:'1.1-1' }} cm</div>
+          <!-- Base inferior: Sonda de turbidez TS-300B -->
+          <div class="probe-bottom" title="Sensor Optico Turbidez TS-300B (IO14 ADC2)">
+            <span class="probe-dot" [style.background]="colorCalidad()"></span>
+            <span class="probe-label">TS-300B: {{ turbidez() | number:'1.2-2' }} UNT</span>
           </div>
         </div>
       </div>
 
-      <!-- Leyenda inferior con aviso de estado -->
-      <div class="tank-footnote">
-        <span class="status-dot" [style.background]="colorEstado()"></span>
-        <span>{{ textoCalidad() }}</span>
+      <!-- Resumen numerico de precision inferior -->
+      <div class="tank-specs-grid">
+        <div class="spec-cell">
+          <span class="spec-label">Columna neta</span>
+          <span class="spec-val mono-val">{{ alturaAguaCm() | number:'1.1-1' }} cm</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">Zona libre</span>
+          <span class="spec-val mono-val">{{ (100 - porcentajeNormalizado()) | number:'1.1-1' }}%</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">Calidad fisica</span>
+          <span class="spec-val" [style.color]="colorCalidad()">{{ etiquetaCalidad() }}</span>
+        </div>
       </div>
     </div>
   `,
   styles: [`
-    .tank-container {
+    .scada-tank-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: 8px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      padding: 16px;
-      background: var(--card-bg, #1e293b);
-      border-radius: 16px;
-      border: 1px solid var(--border-color, #334155);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      gap: 14px;
       width: 100%;
-      max-width: 380px;
+      box-sizing: border-box;
     }
 
-    .lid-status {
+    .tank-card-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 16px;
-      border-radius: 9999px;
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.35);
-      color: #10b981;
-      font-size: 0.875rem;
-      transition: all 0.3s ease;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
     }
 
-    .lid-status.lid-open {
-      background: rgba(239, 68, 68, 0.15);
-      border-color: rgba(239, 68, 68, 0.5);
-      color: #ef4444;
-      animation: pulse-border 1.5s infinite;
-    }
-
-    .lid-indicator-icon svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    .lid-text {
+    .sensor-title {
       display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sensor-tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 3px;
+      background-color: var(--bg-surface-raised);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-medium);
+    }
+
+    .tank-mode-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .lid-badge {
+      display: inline-flex;
       align-items: center;
       gap: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background-color: var(--status-normal-bg);
+      border: 1px solid var(--status-normal-border);
+      color: var(--status-normal);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
     }
 
-    .lid-title {
-      color: var(--text-muted, #94a3b8);
+    .lid-badge.lid-open {
+      background-color: var(--status-crit-bg);
+      border-color: var(--status-crit-border);
+      color: var(--status-crit);
+      animation: alert-blink 1.5s infinite;
     }
 
-    .lid-timer {
-      font-size: 0.8rem;
+    .lid-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .lid-secs {
       opacity: 0.85;
     }
 
-    .cylinder-wrapper {
-      position: relative;
-      width: 220px;
-      height: 320px;
-      padding: 10px;
+    @keyframes alert-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
 
-    .cylinder-glass {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      border-radius: 24px;
-      border: 3px solid rgba(255, 255, 255, 0.15);
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-      overflow: hidden;
-      box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.5), 0 8px 30px rgba(0, 0, 0, 0.4);
+    .scada-visual-container {
       display: flex;
-      align-items: flex-end;
+      align-items: stretch;
+      justify-content: center;
+      gap: 12px;
+      padding: 10px 0;
+      height: 280px;
     }
 
-    .level-marks {
-      position: absolute;
-      top: 0;
-      right: 8px;
-      bottom: 0;
+    /* Regla graduada lateral */
+    .scale-ruler {
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      pointer-events: none;
-      z-index: 5;
-      padding: 12px 0;
+      align-items: flex-end;
+      padding: 4px 0;
+      user-select: none;
+      width: 54px;
+      flex-shrink: 0;
     }
 
-    .mark {
+    .ruler-mark {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .tick-label {
       font-size: 0.68rem;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.4);
-      text-align: right;
+      font-family: var(--font-mono);
+      color: var(--text-tertiary);
     }
 
-    .water-body {
+    .tick-line {
+      width: 8px;
+      height: 1px;
+      background-color: var(--border-strong);
+    }
+
+    /* Estructura del cilindro */
+    .cylinder-structure {
+      position: relative;
+      width: 170px;
+      height: 100%;
+      border-radius: 6px;
+      border: 1px solid var(--border-medium);
+      background-color: #0b1329;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.6);
+    }
+
+    .sensor-probe-top {
+      position: relative;
+      height: 22px;
+      background-color: var(--bg-surface-raised);
+      border-bottom: 1px solid var(--border-medium);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    .probe-hardware {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .probe-label {
+      font-size: 0.62rem;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .acoustic-beam {
+      position: absolute;
+      top: 22px;
+      left: 30%;
+      right: 30%;
+      border-left: 1px dashed rgba(255, 255, 255, 0.15);
+      border-right: 1px dashed rgba(255, 255, 255, 0.15);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .fluid-chamber {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+      background: linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.1) 50%, rgba(255,255,255,0.02) 100%);
+    }
+
+    .liquid-mass {
       position: relative;
       width: 100%;
-      transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-      min-height: 2%;
+      transition: height 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+      min-height: 2px;
       max-height: 100%;
     }
 
-    .water-wave {
+    .meniscus-line {
       position: absolute;
-      top: -12px;
+      top: 0;
       left: 0;
-      width: 200%;
-      height: 24px;
-      opacity: 0.6;
-      border-radius: 40%;
+      right: 0;
+      height: 2px;
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
     }
 
-    .wave-1 {
-      animation: wave 7s linear infinite;
-    }
-
-    .wave-2 {
-      top: -10px;
-      opacity: 0.35;
-      animation: wave 4s linear infinite reverse;
-    }
-
-    @keyframes wave {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-
-    @keyframes pulse-border {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-      50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
-    }
-
-    .tank-overlay-info {
+    .telemetry-readout {
       position: absolute;
       inset: 0;
       display: flex;
@@ -210,44 +309,77 @@ import { DecimalPipe } from '@angular/common';
       justify-content: center;
       z-index: 10;
       pointer-events: none;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-      gap: 4px;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
     }
 
-    .percent-display {
-      font-size: 2.25rem;
-      font-weight: 800;
+    .readout-percent {
+      font-size: 1.85rem;
+      font-weight: 700;
       color: #ffffff;
-      letter-spacing: -0.03em;
+      line-height: 1;
     }
 
-    .volume-display {
-      font-size: 0.925rem;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.9);
-      background: rgba(15, 23, 42, 0.6);
-      padding: 2px 10px;
-      border-radius: 9999px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    .readout-liters {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.85);
+      margin-top: 4px;
     }
 
-    .height-display {
-      font-size: 0.775rem;
-      color: rgba(255, 255, 255, 0.75);
-    }
-
-    .tank-footnote {
+    .probe-bottom {
+      height: 20px;
+      background-color: var(--bg-surface-raised);
+      border-top: 1px solid var(--border-medium);
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 0.85rem;
-      color: var(--text-muted, #94a3b8);
+      justify-content: center;
+      gap: 6px;
+      z-index: 5;
     }
 
-    .status-dot {
-      width: 10px;
-      height: 10px;
+    .probe-dot {
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
+    }
+
+    .tank-specs-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .spec-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .spec-label {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+    }
+
+    .spec-val {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Ajuste en pantallas pequenas */
+    @media (max-width: 480px) {
+      .scada-visual-container {
+        height: 240px;
+      }
+      .cylinder-structure {
+        width: 140px;
+      }
+      .readout-percent {
+        font-size: 1.5rem;
+      }
     }
   `]
 })
@@ -260,48 +392,42 @@ export class TankGaugeComponent {
   readonly segundosTapaAbierta = input<number>(0);
   readonly alturaAguaCm = input<number>(0);
 
-  // Normalizar porcentaje entre 0 y 100
   readonly porcentajeNormalizado = computed(() => {
     const val = Number(this.porcentaje()) || 0;
     return Math.max(0, Math.min(100, val));
   });
 
-  // Color de degradado y aspecto del agua segun la turbidez
-  readonly gradienteAgua = computed(() => {
+  readonly distanciaProporcional = computed(() => {
+    return Math.max(0, 100 - this.porcentajeNormalizado());
+  });
+
+  readonly colorLiquido = computed(() => {
     const ntu = Number(this.turbidez()) || 0;
     if (ntu > 5.0) {
-      // Agua turbia / sedimentos
       return 'linear-gradient(180deg, #b45309 0%, #78350f 100%)';
     }
     if (ntu > 2.5) {
-      // Agua con ligera turbidez
-      return 'linear-gradient(180deg, #0284c7 0%, #ca8a04 100%)';
+      return 'linear-gradient(180deg, #0284c7 0%, #a16207 100%)';
     }
-    // Agua limpia y cristalina
-    return 'linear-gradient(180deg, #38bdf8 0%, #0369a1 100%)';
+    return 'linear-gradient(180deg, #0284c7 0%, #0369a1 100%)';
   });
 
-  readonly colorOnda = computed(() => {
+  readonly colorMenisco = computed(() => {
     const ntu = Number(this.turbidez()) || 0;
-    return ntu > 5.0 ? '#d97706' : '#7dd3fc';
+    return ntu > 5.0 ? '#f59e0b' : '#38bdf8';
   });
 
-  readonly colorOndaSecundaria = computed(() => {
+  readonly colorCalidad = computed(() => {
     const ntu = Number(this.turbidez()) || 0;
-    return ntu > 5.0 ? '#b45309' : '#38bdf8';
+    if (ntu > 5.0) return 'var(--status-crit)';
+    if (ntu > 2.5) return 'var(--status-warn)';
+    return 'var(--status-normal)';
   });
 
-  readonly colorEstado = computed(() => {
+  readonly etiquetaCalidad = computed(() => {
     const ntu = Number(this.turbidez()) || 0;
-    if (ntu > 5.0) return '#ef4444';
-    if (ntu > 2.5) return '#f59e0b';
-    return '#10b981';
-  });
-
-  readonly textoCalidad = computed(() => {
-    const ntu = Number(this.turbidez()) || 0;
-    if (ntu > 5.0) return `Agua Turbia (${ntu.toFixed(2)} UNT > Limite 5.0)`;
-    if (ntu > 2.5) return `Agua Aceptable (${ntu.toFixed(2)} UNT)`;
-    return `Agua Clara Potable (${ntu.toFixed(2)} UNT)`;
+    if (ntu > 5.0) return 'Turbia (>5 UNT)';
+    if (ntu > 2.5) return 'Regular';
+    return 'Potable';
   });
 }

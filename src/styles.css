@@ -1,51 +1,96 @@
-/* Variables globales y tokens de diseno para Tanque Inteligente */
+/* Tokens de diseno industrial SCADA / IoT para Tanque Inteligente */
 :root {
-  --bg-body: #0b1120;
-  --card-bg: #1e293b;
-  --border-color: #334155;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
+  --bg-primary: #0a0f1d;
+  --bg-surface: #111827;
+  --bg-surface-raised: #1f2937;
+  --bg-surface-hover: #374151;
   
-  --color-primary: #0284c7;
-  --color-primary-hover: #0369a1;
-  --color-primary-light: #38bdf8;
-  
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --border-subtle: #1f2937;
+  --border-medium: #374151;
+  --border-strong: #4b5563;
+
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --text-inverted: #111827;
+
+  /* Estados operativos SCADA */
+  --status-normal: #10b981;
+  --status-normal-bg: rgba(16, 185, 129, 0.12);
+  --status-normal-border: rgba(16, 185, 129, 0.35);
+
+  --status-warn: #f59e0b;
+  --status-warn-bg: rgba(245, 158, 11, 0.12);
+  --status-warn-border: rgba(245, 158, 11, 0.35);
+
+  --status-crit: #ef4444;
+  --status-crit-bg: rgba(239, 68, 68, 0.12);
+  --status-crit-border: rgba(239, 68, 68, 0.4);
+
+  --status-info: #0284c7;
+  --status-info-bg: rgba(2, 132, 199, 0.12);
+  --status-info-border: rgba(2, 132, 199, 0.35);
+
+  /* Telemetria hidraulica */
+  --water-clean: #0ea5e9;
+  --water-clean-deep: #0369a1;
+  --water-turbid: #b45309;
+  --water-turbid-deep: #78350f;
+
+  /* Tipografias */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, ui-monospace, monospace;
+
+  /* Touch y espaciado movil */
+  --touch-target-min: 44px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
-html, body {
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
-  background-color: var(--bg-body);
-  color: var(--text-main);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/* Scrollbar personalizado */
+/* Numeros tabulares para lecturas de instrumentacion */
+.mono-val, .metric-value, .stat-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Barra de scroll discreta */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: var(--bg-primary);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+/* Clases de utilidad interactiva */
+button, a {
+  -webkit-tap-highlight-color: transparent;
 }

@@ -5,151 +5,154 @@ import { AlertaItem } from '../../../../core/models/tanque.model';
   selector: 'app-alerts-panel',
   standalone: true,
   template: `
-    <div class="alerts-container">
+    <div class="annunciator-panel">
       <div class="panel-header">
-        <div class="header-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="title-icon">
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          <h3>Vigilancia Sanitaria y Alertas</h3>
+        <div class="header-left">
+          <span class="panel-tag">VIGILANCIA</span>
+          <h3 class="panel-title">Reglas Fijas Sanitarias (MINSA)</h3>
         </div>
-        <span class="alerts-count" [class.has-alerts]="alertas().length > 0">
-          {{ alertas().length }} {{ alertas().length === 1 ? 'alerta activa' : 'alertas activas' }}
-        </span>
+
+        <div class="alarm-counter" [class.has-alarms]="alertas().length > 0">
+          <span class="counter-pip"></span>
+          <span>{{ alertas().length }} {{ alertas().length === 1 ? 'alarma activa' : 'alarmas activas' }}</span>
+        </div>
       </div>
 
-      <!-- Lista de alertas activas -->
+      <!-- Alertas activas prioritarias -->
       @if (alertas().length > 0) {
-        <div class="alerts-list">
+        <div class="active-alarms-list">
           @for (item of alertas(); track item.id) {
-            <div class="alert-box" [class]="'sev-' + item.severidad">
-              <div class="alert-main">
-                <div class="alert-top">
-                  <span class="alert-title">{{ item.titulo }}</span>
-                  @if (item.normativa) {
-                    <span class="norm-badge">{{ item.normativa }}</span>
-                  }
-                </div>
-                <p class="alert-msg">{{ item.mensaje }}</p>
+            <div class="alarm-banner" [class]="'sev-' + item.severidad">
+              <div class="alarm-header-row">
+                <span class="alarm-name">{{ item.titulo }}</span>
+                @if (item.normativa) {
+                  <span class="norm-pill">{{ item.normativa }}</span>
+                }
               </div>
+              <p class="alarm-desc">{{ item.mensaje }}</p>
             </div>
           }
         </div>
       } @else {
-        <div class="no-alerts">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-          <div class="no-alerts-content">
-            <strong>Parametros normales</strong>
-            <p>El tanque cumple con las condiciones sanitarias de almacenamiento seguro.</p>
+        <div class="all-clear-box">
+          <span class="clear-pip"></span>
+          <div class="clear-text">
+            <strong>Parametros sanitarios dentro de rango</strong>
+            <span>Sin alarmas criticas de desabastecimiento, turbidez, vectores ni fugas.</span>
           </div>
         </div>
       }
 
-      <!-- Bloque de recomendacion del firmware / asistente -->
+      <!-- Despacho de recomendacion operacional del firmware -->
       @if (recomendacion()) {
-        <div class="recommendation-card">
-          <div class="rec-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-            <strong>Recomendacion del Sistema (Firmware & Contexto):</strong>
+        <div class="dispatch-box">
+          <div class="dispatch-header">
+            <span class="dispatch-label">RECOMENDACION OPERACIONAL</span>
           </div>
-          <p class="rec-text">{{ recomendacion() }}</p>
-          <span class="rec-note">
-            Referencia normativa: D.S. 031-2010-SA (Reglamento de la Calidad del Agua para Consumo Humano).
-          </span>
+          <p class="dispatch-content">{{ recomendacion() }}</p>
+          <span class="dispatch-cite">Base regulatoria: D.S. 031-2010-SA (Reglamento de la Calidad del Agua)</span>
         </div>
       }
     </div>
   `,
   styles: [`
-    .alerts-container {
-      background: var(--card-bg, #1e293b);
-      border: 1px solid var(--border-color, #334155);
-      border-radius: 16px;
-      padding: 20px;
+    .annunciator-panel {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: 8px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      gap: 12px;
     }
 
     .panel-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
       flex-wrap: wrap;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
     }
 
-    .header-title {
+    .header-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
-    .header-title h3 {
+    .panel-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 3px;
+      background-color: var(--bg-surface-raised);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-medium);
+    }
+
+    .panel-title {
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 0.9rem;
       font-weight: 600;
-      color: #ffffff;
+      color: var(--text-primary);
     }
 
-    .title-icon {
-      width: 20px;
-      height: 20px;
-      color: #f59e0b;
-    }
-
-    .alerts-count {
-      padding: 4px 10px;
-      border-radius: 9999px;
-      font-size: 0.8rem;
+    .alarm-counter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
       font-weight: 600;
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background-color: var(--status-normal-bg);
+      border: 1px solid var(--status-normal-border);
+      color: var(--status-normal);
     }
 
-    .alerts-count.has-alerts {
-      background: rgba(239, 68, 68, 0.18);
-      color: #ef4444;
-      border-color: rgba(239, 68, 68, 0.4);
+    .alarm-counter.has-alarms {
+      background-color: var(--status-crit-bg);
+      border-color: var(--status-crit-border);
+      color: var(--status-crit);
     }
 
-    .alerts-list {
+    .counter-pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .active-alarms-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
-    .alert-box {
-      border-radius: 10px;
-      padding: 12px 14px;
+    .alarm-banner {
+      border-radius: 5px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      border-left: 4px solid;
+      border-left: 3px solid;
     }
 
-    .alert-box.sev-critica {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: #ef4444;
+    .alarm-banner.sev-critica {
+      background-color: var(--status-crit-bg);
+      border-color: var(--status-crit);
     }
 
-    .alert-box.sev-advertencia {
-      background: rgba(245, 158, 11, 0.1);
-      border-color: #f59e0b;
+    .alarm-banner.sev-advertencia {
+      background-color: var(--status-warn-bg);
+      border-color: var(--status-warn);
     }
 
-    .alert-top {
+    .alarm-header-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -157,90 +160,103 @@ import { AlertaItem } from '../../../../core/models/tanque.model';
       flex-wrap: wrap;
     }
 
-    .alert-title {
-      font-weight: 700;
-      font-size: 0.925rem;
-      color: #ffffff;
-    }
-
-    .norm-badge {
-      font-size: 0.725rem;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-muted, #94a3b8);
-    }
-
-    .alert-msg {
-      margin: 4px 0 0;
+    .alarm-name {
       font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.85);
-      line-height: 1.4;
+      font-weight: 700;
+      color: var(--text-primary);
     }
 
-    .no-alerts {
+    .norm-pill {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      padding: 1px 6px;
+      border-radius: 3px;
+      background-color: rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
+    }
+
+    .alarm-desc {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+
+    .all-clear-box {
       display: flex;
       align-items: center;
-      gap: 14px;
-      padding: 14px 16px;
-      border-radius: 10px;
-      background: rgba(16, 185, 129, 0.08);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      color: #10b981;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 5px;
+      background-color: var(--status-normal-bg);
+      border: 1px solid var(--status-normal-border);
+      color: var(--status-normal);
     }
 
-    .no-alerts svg {
-      width: 24px;
-      height: 24px;
+    .clear-pip {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--status-normal);
       flex-shrink: 0;
     }
 
-    .no-alerts-content p {
-      margin: 2px 0 0;
-      font-size: 0.825rem;
-      color: rgba(255, 255, 255, 0.75);
-    }
-
-    .recommendation-card {
-      margin-top: 6px;
-      padding: 14px 16px;
-      border-radius: 10px;
-      background: rgba(56, 189, 248, 0.08);
-      border: 1px solid rgba(56, 189, 248, 0.25);
+    .clear-text {
       display: flex;
       flex-direction: column;
+      gap: 2px;
+    }
+
+    .clear-text strong {
+      font-size: 0.825rem;
+      color: var(--status-normal);
+    }
+
+    .clear-text span {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .dispatch-box {
+      padding: 10px 12px;
+      border-radius: 5px;
+      background-color: var(--bg-surface-raised);
+      border: 1px solid var(--border-medium);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .dispatch-header {
+      display: flex;
+      align-items: center;
       gap: 6px;
     }
 
-    .rec-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #38bdf8;
-      font-size: 0.875rem;
+    .dispatch-label {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--status-info);
+      letter-spacing: 0.04em;
     }
 
-    .rec-header svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    .rec-text {
+    .dispatch-content {
       margin: 0;
-      font-size: 0.9rem;
-      color: #ffffff;
-      line-height: 1.45;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      line-height: 1.4;
     }
 
-    .rec-note {
-      font-size: 0.75rem;
-      color: var(--text-muted, #94a3b8);
-      font-style: italic;
+    .dispatch-cite {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      color: var(--text-tertiary);
+      margin-top: 2px;
     }
   `]
 })
 export class AlertsPanelComponent {
   readonly alertas = input<AlertaItem[]>([]);
   readonly recomendacion = input<string>('');
-  readonly limiteMinsa = input<number>(5.0);
 }

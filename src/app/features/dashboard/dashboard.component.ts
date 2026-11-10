@@ -1,5 +1,5 @@
 import { Component, inject, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { Esp32LocalService } from '../../core/services/esp32-local.service';
 import { TankGaugeComponent } from './components/tank-gauge/tank-gauge.component';
@@ -11,43 +11,40 @@ import { AlertsPanelComponent } from './components/alerts-panel/alerts-panel.com
   standalone: true,
   imports: [
     CommonModule,
+    DecimalPipe,
+    DatePipe,
     TankGaugeComponent,
     MetricCardComponent,
     AlertsPanelComponent
   ],
   template: `
-    <div class="dashboard-wrapper">
-      <!-- Barra superior con estado de conectividad y acciones -->
-      <header class="dashboard-header">
-        <div class="header-info">
-          <h2>Panel de Monitoreo en Tiempo Real</h2>
-          <p class="subtitle">
-            Nodo AI-Thinker ESP32-CAM · Sincronizacion continua con Supabase Cloud
-          </p>
+    <div class="scada-dashboard">
+      <!-- Barra de telemetria y control de estacion -->
+      <section class="station-toolbar">
+        <div class="toolbar-left">
+          <div class="node-badge">
+            <span class="node-dot" [class.active]="supabase.conectadoRealtime()"></span>
+            <span class="node-name">AI-Thinker ESP32-CAM</span>
+            <span class="node-id">#ID: 01</span>
+          </div>
+
+          <div class="sync-time mono-val">
+            @if (estado()?.updated_at) {
+              Sync: {{ estado()?.updated_at | date:'HH:mm:ss' }} UTC
+            } @else {
+              Esperando enlace...
+            }
+          </div>
         </div>
 
-        <div class="header-actions">
-          <!-- Indicador de conexion Realtime -->
-          <div
-            class="connection-badge"
-            [class.connected]="supabase.conectadoRealtime()"
-            [title]="supabase.conectadoRealtime() ? 'Canal WebSockets activo' : 'Modo sondeo periodico'"
-          >
-            <span class="pulse-dot"></span>
-            <span>{{ supabase.conectadoRealtime() ? 'Realtime Conectado' : 'Sondeo Activo' }}</span>
-          </div>
-
-          <!-- Modo del tanque (Prototipo o Real) -->
-          <div class="mode-badge">
-            {{ estado()?.modo_prototipo ? 'Prototipo 7 L' : 'Tanque Real 1100 L' }}
-          </div>
-
-          <!-- Boton de refresco manual -->
+        <div class="toolbar-right">
+          <!-- Boton de refresco rapido -->
           <button
             type="button"
-            class="btn-refresh"
+            class="tool-btn"
             (click)="refrescar()"
             [disabled]="supabase.cargando()"
+            aria-label="Actualizar datos del servidor"
           >
             <svg
               viewBox="0 0 24 24"
@@ -59,66 +56,65 @@ import { AlertsPanelComponent } from './components/alerts-panel/alerts-panel.com
               <path d="M23 4v6h-6M1 20v-6h6" />
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
             </svg>
-            <span>Actualizar</span>
+            <span>Sincronizar</span>
           </button>
         </div>
-      </header>
+      </section>
 
-      <!-- Mensaje de error de conexion si existiera -->
+      <!-- Panel de advertencia si la conexion tiene errores -->
       @if (supabase.errorConexion()) {
-        <div class="error-banner">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <span>{{ supabase.errorConexion() }}</span>
+        <div class="error-strip" role="alert">
+          <span class="error-tag">FALLO NUBE</span>
+          <span class="error-msg">{{ supabase.errorConexion() }}</span>
         </div>
       }
 
-      <!-- Acciones de diagnostico local ESP32 si hay IP configurada -->
+      <!-- Acciones de diagnostico LAN (si hay IP local configurada) -->
       @if (config().esp32Ip) {
-        <div class="lan-action-bar">
-          <div class="lan-info">
-            <span class="lan-dot"></span>
-            <span>Nodo Local ESP32 en: <strong>{{ config().esp32Ip }}</strong></span>
+        <div class="lan-toolbar">
+          <div class="lan-status">
+            <span class="lan-tag">LAN ESP32</span>
+            <span class="lan-ip mono-val">{{ config().esp32Ip }}</span>
           </div>
-          <div class="lan-buttons">
+
+          <div class="lan-actions">
             <button
               type="button"
-              class="btn-secondary"
+              class="lan-btn"
               (click)="consultarLocal()"
               [disabled]="esp32Local.cargandoLocal()"
             >
-              Consultar Directo (LAN)
+              Consultar /api/estado
             </button>
             <button
               type="button"
-              class="btn-warning-action"
+              class="lan-btn btn-trigger"
               (click)="dispararMedicionTurbidez()"
               [disabled]="esp32Local.cargandoLocal()"
             >
-              {{ esp32Local.cargandoLocal() ? 'Midiendo...' : 'Forzar Lectura Turbidez' }}
+              {{ esp32Local.cargandoLocal() ? 'Midiendo...' : 'Forzar Turbidez TS-300B' }}
             </button>
           </div>
         </div>
 
         @if (esp32Local.errorLocal()) {
-          <div class="lan-error-banner">
-            {{ esp32Local.errorLocal() }}
+          <div class="lan-msg-strip error-strip">
+            <span class="error-tag">ERROR LAN</span>
+            <span>{{ esp32Local.errorLocal() }}</span>
           </div>
         }
         @if (mensajeExitoLan()) {
-          <div class="lan-success-banner">
-            {{ mensajeExitoLan() }}
+          <div class="lan-msg-strip success-strip">
+            <span class="ok-tag">LAN OK</span>
+            <span>{{ mensajeExitoLan() }}</span>
           </div>
         }
       }
 
-      <!-- Contenido principal: Tanque central y cuadricula de telemetria -->
-      <div class="main-grid">
-        <!-- Columna 1: Representacion visual animada del tanque -->
-        <div class="tank-column">
+      <!-- Diseno principal: 2 columnas en escritorio, 1 columna en movil -->
+      <div class="dashboard-grid">
+        <!-- Columna Izquierda: Tanque SCADA HMI -->
+        <aside class="tank-column">
           <app-tank-gauge
             [porcentaje]="estado()?.porcentaje_nivel ?? 0"
             [litros]="estado()?.litros_disponibles ?? 0"
@@ -129,190 +125,194 @@ import { AlertsPanelComponent } from './components/alerts-panel/alerts-panel.com
             [alturaAguaCm]="estado()?.altura_agua_cm ?? 0"
           />
 
-          <div class="sync-timestamp">
-            Ultima telemetria recibida:
-            <strong>{{ estado()?.updated_at ? (estado()?.updated_at | date:'medium') : 'Sin sincronizar' }}</strong>
+          <!-- Tarjeta de diagnostico del transceptor -->
+          <div class="hardware-card">
+            <div class="hw-row">
+              <span class="hw-label">Protocolo Nube</span>
+              <span class="hw-val mono-val">HTTPS PostgREST RPC</span>
+            </div>
+            <div class="hw-row">
+              <span class="hw-label">Canal Realtime</span>
+              <span class="hw-val mono-val">{{ supabase.conectadoRealtime() ? 'WebSocket (ACTIVO)' : 'Polling 15s' }}</span>
+            </div>
+            <div class="hw-row">
+              <span class="hw-label">Tolerancia ADC2</span>
+              <span class="hw-val mono-val">WiFi Aislado en Muestreo</span>
+            </div>
           </div>
-        </div>
+        </aside>
 
-        <!-- Columna 2: Metricas y Alertas Sanitarias -->
-        <div class="metrics-column">
-          <!-- Cuadricula de 6 tarjetas de medicion fisica -->
-          <div class="cards-grid">
-            <!-- 1. Turbidez y Calidad Sanitaria -->
+        <!-- Columna Derecha: Tarjetas de Instrumentacion y Vigilancia Sanitaria -->
+        <main class="telemetry-column">
+          <!-- Grilla de metricas de 6 canales fisicos -->
+          <div class="kpi-grid">
+            <!-- Canal 1: Turbidez Fisica -->
             <app-metric-card
               titulo="Turbidez Fisica"
               [valor]="(estado()?.turbidez_ntu ?? 0) | number:'1.2-2'"
               unidad="UNT"
               [subtitulo]="'Ref. entrada: ' + (estado()?.turbidez_referencia_ntu ?? 0) + ' UNT (Limite: 5.0)'"
-              icono="turbidity"
+              tagHardware="IO14 TS-300B"
               [estado]="(estado()?.alerta_turbidez_alta || (estado()?.turbidez_ntu ?? 0) > 5) ? 'alerta' : ((estado()?.turbidez_ntu ?? 0) > 2.5 ? 'advertencia' : 'exito')"
             />
 
-            <!-- 2. Autonomia Estimada -->
+            <!-- Canal 2: Autonomia Proyectada -->
             <app-metric-card
-              titulo="Autonomia Estimada"
+              titulo="Autonomia de Reserva"
               [valor]="(estado()?.dias_autonomia ?? 0) | number:'1.1-1'"
               unidad="dias"
-              [subtitulo]="'Capacidad: ' + (estado()?.litros_disponibles ?? 0) + ' L disponibles'"
-              icono="calendar"
+              [subtitulo]="'Litros disponibles: ' + (estado()?.litros_disponibles ?? 0) + ' L'"
+              tagHardware="CALCULADO"
               [estado]="(estado()?.dias_autonomia ?? 0) < 1 ? 'advertencia' : 'normal'"
             />
 
-            <!-- 3. Flujo y Tasa de Consumo -->
+            <!-- Canal 3: Tasa de Flujo y Fugas -->
             <app-metric-card
-              titulo="Flujo de Consumo"
+              titulo="Tasa de Consumo"
               [valor]="(estado()?.tasa_consumo_l_h ?? 0) | number:'1.2-2'"
               unidad="L/h"
-              [subtitulo]="'Promedio diario: ' + (estado()?.consumo_promedio_diario_l ?? 0) + ' L/dia'"
-              icono="gauge"
+              [subtitulo]="'Media diaria: ' + (estado()?.consumo_promedio_diario_l ?? 0) + ' L/dia'"
+              tagHardware="DERIVADO"
               [estado]="estado()?.alerta_fuga ? 'alerta' : 'normal'"
             />
 
-            <!-- 4. Altura de Agua y Distancia Sensor -->
+            <!-- Canal 4: Columna y Distancia Sensor -->
             <app-metric-card
-              titulo="Columna de Agua"
+              titulo="Nivel Hidraulico"
               [valor]="(estado()?.altura_agua_cm ?? 0) | number:'1.1-1'"
               unidad="cm"
               [subtitulo]="'Distancia ultrasonica: ' + (estado()?.distancia_cm ?? 0) + ' cm'"
-              icono="water"
+              tagHardware="IO12/13 JSN-SR04T"
               [estado]="estado()?.alerta_nivel_bajo ? 'alerta' : 'normal'"
             />
 
-            <!-- 5. Tiempo de Almacenamiento -->
+            <!-- Canal 5: Tiempo Almacenamiento -->
             <app-metric-card
-              titulo="Agua Almacenada"
+              titulo="Tiempo de Almacenamiento"
               [valor]="(estado()?.horas_almacenada ?? 0) | number:'1.1-1'"
               unidad="horas"
-              [subtitulo]="(estado()?.horas_almacenada ?? 0) >= 72 ? 'Excede los 3 dias recomendados' : 'Almacenamiento reciente'"
-              icono="clock"
+              [subtitulo]="(estado()?.horas_almacenada ?? 0) >= 72 ? 'Alerta: Supera 3 dias (72 h)' : 'Rotacion hidrica normal'"
+              tagHardware="CONTADOR"
               [estado]="estado()?.alerta_estancada ? 'advertencia' : 'normal'"
             />
 
-            <!-- 6. Tiempo de Actividad ESP32 -->
+            <!-- Canal 6: Uptime del MCU -->
             <app-metric-card
               titulo="Uptime Microcontrolador"
               [valor]="tiempoUptime()"
               unidad=""
-              [subtitulo]="'Dispositivo: ESP32-CAM (AI-Thinker)'"
-              icono="activity"
+              [subtitulo]="'Procesador Xtensa Dual-Core 240MHz'"
+              tagHardware="SYS TICK"
               estado="normal"
             />
           </div>
 
-          <!-- Panel inferior de alertas y recomendaciones -->
+          <!-- Cuadro de Alarmas Sanitarias y Normativas -->
           <app-alerts-panel
             [alertas]="supabase.alertasActivas()"
             [recomendacion]="estado()?.recomendacion_sugerida ?? ''"
           />
-        </div>
+        </main>
       </div>
     </div>
   `,
   styles: [`
-    .dashboard-wrapper {
+    .scada-dashboard {
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 14px;
       width: 100%;
     }
 
-    .dashboard-header {
+    /* Barra superior de telemetria SCADA */
+    .station-toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
       flex-wrap: wrap;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border-color, #334155);
     }
 
-    .header-info h2 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.02em;
-    }
-
-    .subtitle {
-      margin: 4px 0 0;
-      font-size: 0.875rem;
-      color: var(--text-muted, #94a3b8);
-    }
-
-    .header-actions {
+    .toolbar-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       flex-wrap: wrap;
     }
 
-    .connection-badge {
+    .node-badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      border-radius: 9999px;
-      font-size: 0.825rem;
+      gap: 6px;
+      font-size: 0.8rem;
       font-weight: 600;
-      background: rgba(245, 158, 11, 0.15);
-      border: 1px solid rgba(245, 158, 11, 0.35);
-      color: #f59e0b;
-      transition: all 0.3s ease;
     }
 
-    .connection-badge.connected {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: rgba(16, 185, 129, 0.35);
-      color: #10b981;
-    }
-
-    .pulse-dot {
+    .node-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 0 6px currentColor;
+      background-color: var(--status-warn);
     }
 
-    .mode-badge {
-      padding: 6px 14px;
-      border-radius: 9999px;
-      font-size: 0.825rem;
-      font-weight: 600;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      color: #38bdf8;
+    .node-dot.active {
+      background-color: var(--status-normal);
+      box-shadow: 0 0 6px var(--status-normal);
     }
 
-    .btn-refresh {
-      display: inline-flex;
+    .node-name {
+      color: var(--text-primary);
+    }
+
+    .node-id {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      color: var(--text-tertiary);
+    }
+
+    .sync-time {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .toolbar-right {
+      display: flex;
       align-items: center;
       gap: 8px;
-      padding: 7px 16px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      background: #0284c7;
-      color: #ffffff;
-      border: none;
+    }
+
+    .tool-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      background-color: var(--bg-surface-raised);
+      border: 1px solid var(--border-medium);
+      color: var(--text-primary);
+      font-size: 0.8rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s;
+      min-height: 34px;
+      transition: background-color 0.15s ease;
     }
 
-    .btn-refresh:hover:not(:disabled) {
-      background: #0369a1;
+    .tool-btn:hover:not(:disabled) {
+      background-color: var(--bg-surface-hover);
     }
 
-    .btn-refresh:disabled {
-      opacity: 0.6;
+    .tool-btn:disabled {
+      opacity: 0.5;
       cursor: not-allowed;
     }
 
-    .btn-refresh svg {
-      width: 16px;
-      height: 16px;
+    .tool-btn svg {
+      width: 14px;
+      height: 14px;
     }
 
     .spinning {
@@ -323,138 +323,188 @@ import { AlertsPanelComponent } from './components/alerts-panel/alerts-panel.com
       100% { transform: rotate(360deg); }
     }
 
-    .error-banner {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      border-radius: 10px;
-      background: rgba(239, 68, 68, 0.12);
-      border: 1px solid rgba(239, 68, 68, 0.4);
-      color: #ef4444;
-      font-size: 0.875rem;
-    }
-
-    .error-banner svg {
-      width: 20px;
-      height: 20px;
-      flex-shrink: 0;
-    }
-
-    .lan-action-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 12px 18px;
-      border-radius: 12px;
-      background: rgba(30, 41, 59, 0.7);
-      border: 1px solid var(--border-color, #334155);
-      flex-wrap: wrap;
-    }
-
-    .lan-info {
+    .error-strip {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.875rem;
-      color: var(--text-muted, #94a3b8);
+      padding: 8px 12px;
+      border-radius: 4px;
+      background-color: var(--status-crit-bg);
+      border: 1px solid var(--status-crit-border);
+      color: var(--status-crit);
+      font-size: 0.8rem;
     }
 
-    .lan-info strong {
-      color: #ffffff;
+    .error-tag {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 2px;
+      background-color: var(--status-crit);
+      color: #000000;
     }
 
-    .lan-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #38bdf8;
-    }
-
-    .lan-buttons {
+    .success-strip {
       display: flex;
       align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background-color: var(--status-normal-bg);
+      border: 1px solid var(--status-normal-border);
+      color: var(--status-normal);
+      font-size: 0.8rem;
+    }
+
+    .ok-tag {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 2px;
+      background-color: var(--status-normal);
+      color: #000000;
+    }
+
+    /* Barra de herramientas LAN */
+    .lan-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 10px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
       flex-wrap: wrap;
     }
 
-    .btn-secondary {
-      padding: 6px 14px;
-      border-radius: 8px;
-      font-size: 0.825rem;
-      font-weight: 500;
-      background: #334155;
-      color: #ffffff;
-      border: 1px solid #475569;
-      cursor: pointer;
+    .lan-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .btn-warning-action {
-      padding: 6px 14px;
-      border-radius: 8px;
-      font-size: 0.825rem;
+    .lan-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--status-info);
+    }
+
+    .lan-ip {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    .lan-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .lan-btn {
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      background-color: var(--bg-surface-raised);
+      border: 1px solid var(--border-medium);
+      color: var(--text-primary);
+      cursor: pointer;
+      min-height: 32px;
+    }
+
+    .btn-trigger {
+      background-color: var(--status-warn-bg);
+      border-color: var(--status-warn-border);
+      color: var(--status-warn);
       font-weight: 600;
-      background: #d97706;
-      color: #ffffff;
-      border: none;
-      cursor: pointer;
     }
 
-    .lan-error-banner {
-      padding: 10px 14px;
-      border-radius: 8px;
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #ef4444;
-      font-size: 0.825rem;
-    }
-
-    .lan-success-banner {
-      padding: 10px 14px;
-      border-radius: 8px;
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #10b981;
-      font-size: 0.825rem;
-    }
-
-    .main-grid {
+    /* Diseno de 2 columnas SCADA */
+    .dashboard-grid {
       display: grid;
-      grid-template-columns: 380px 1fr;
-      gap: 24px;
+      grid-template-columns: 310px 1fr;
+      gap: 16px;
       align-items: start;
-    }
-
-    @media (max-width: 1024px) {
-      .main-grid {
-        grid-template-columns: 1fr;
-      }
     }
 
     .tank-column {
       display: flex;
       flex-direction: column;
-      align-items: center;
       gap: 12px;
     }
 
-    .sync-timestamp {
-      font-size: 0.775rem;
-      color: var(--text-muted, #94a3b8);
-      text-align: center;
-    }
-
-    .metrics-column {
+    .hardware-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: 6px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 6px;
     }
 
-    .cards-grid {
+    .hw-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.72rem;
+    }
+
+    .hw-label {
+      color: var(--text-tertiary);
+    }
+
+    .hw-val {
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+    }
+
+    .telemetry-column {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    /* Diseno responsivo en tablets y moviles */
+    @media (max-width: 900px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .tank-column {
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .station-toolbar {
+        padding: 8px 10px;
+      }
+      .node-badge {
+        font-size: 0.75rem;
+      }
+      .kpi-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .lan-actions {
+        width: 100%;
+      }
+      .lan-btn {
+        flex: 1;
+        text-align: center;
+      }
     }
   `]
 })
@@ -467,10 +517,9 @@ export class DashboardComponent {
 
   readonly mensajeExitoLan = signal<string | null>(null);
 
-  // Formato amigable de uptime en dias, horas y minutos
   readonly tiempoUptime = computed(() => {
     const totalSeg = this.estado()?.uptime_seg ?? 0;
-    if (totalSeg <= 0) return '0 min';
+    if (totalSeg <= 0) return '0m';
 
     const dias = Math.floor(totalSeg / 86400);
     const horas = Math.floor((totalSeg % 86400) / 3600);
@@ -494,8 +543,8 @@ export class DashboardComponent {
     this.mensajeExitoLan.set(null);
     const res = await this.esp32Local.obtenerEstadoLocal(ip);
     if (res) {
-      this.mensajeExitoLan.set(`Datos recibidos con exito directamente desde ${res.dispositivo} (Uptime: ${res.uptime_seg}s)`);
-      setTimeout(() => this.mensajeExitoLan.set(null), 6000);
+      this.mensajeExitoLan.set(`Conexion LAN OK con ${res.dispositivo} (Uptime: ${res.uptime_seg}s)`);
+      setTimeout(() => this.mensajeExitoLan.set(null), 5000);
     }
   }
 
@@ -506,9 +555,9 @@ export class DashboardComponent {
     this.mensajeExitoLan.set(null);
     const res = await this.esp32Local.forzarMedicionTurbidez(ip);
     if (res) {
-      this.mensajeExitoLan.set(`Medicion completada. Turbidez medida: ${res.mediciones.turbidez_actual_ntu} UNT`);
+      this.mensajeExitoLan.set(`Medicion ejecutada: ${res.mediciones.turbidez_actual_ntu} UNT`);
       this.supabase.cargarEstadoActual();
-      setTimeout(() => this.mensajeExitoLan.set(null), 6000);
+      setTimeout(() => this.mensajeExitoLan.set(null), 5000);
     }
   }
 }

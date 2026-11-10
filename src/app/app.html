@@ -1,61 +1,102 @@
 <div class="app-layout">
-  <!-- Barra de navegacion principal -->
-  <header class="navbar">
-    <div class="navbar-content">
-      <div class="brand">
-        <div class="brand-logo">
+  <!-- Cabecera superior fija para escritorio y movil -->
+  <header class="app-header">
+    <div class="header-inner">
+      <!-- Identidad SCADA del sistema -->
+      <div class="brand-block">
+        <div class="brand-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
           </svg>
         </div>
-        <div class="brand-text">
-          <span class="brand-name">Tanque Inteligente IoT</span>
-          <span class="brand-badge">ESP32 + Supabase</span>
+        <div class="brand-copy">
+          <div class="brand-title">Tanque Inteligente IoT</div>
+          <div class="brand-subtitle">ESP32-CAM · Supabase Realtime</div>
         </div>
       </div>
 
-      <nav class="nav-links">
-        <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+      <!-- Navegacion para pantallas medianas y grandes -->
+      <nav class="desktop-nav" aria-label="Navegacion principal">
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7" />
             <rect x="14" y="3" width="7" height="7" />
             <rect x="14" y="14" width="7" height="7" />
             <rect x="3" y="14" width="7" height="7" />
           </svg>
-          <span>Dashboard</span>
+          <span>Monitor</span>
         </a>
 
-        <a routerLink="/history" routerLinkActive="active" class="nav-item">
+        <a routerLink="/history" routerLinkActive="active" class="nav-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 14 14" />
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
           </svg>
           <span>Historial</span>
         </a>
 
-        <a routerLink="/settings" routerLinkActive="active" class="nav-item">
+        <a routerLink="/settings" routerLinkActive="active" class="nav-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
-          <span>Configuracion</span>
+          <span>Ajustes</span>
         </a>
       </nav>
+
+      <!-- Estado rapido de enlace SCADA en cabecera -->
+      <div class="header-status">
+        <div
+          class="status-indicator"
+          [class.live]="supabase.conectadoRealtime()"
+          [title]="supabase.conectadoRealtime() ? 'Socket Supabase activo' : 'Sondeo periodico activo'"
+        >
+          <span class="status-pip"></span>
+          <span class="status-label">{{ supabase.conectadoRealtime() ? 'EN VIVO' : 'SONDEO' }}</span>
+        </div>
+      </div>
     </div>
   </header>
 
-  <!-- Contenido de las vistas dinamicas -->
-  <main class="main-content">
-    <div class="content-container">
+  <!-- Area principal de trabajo -->
+  <main class="app-main">
+    <div class="content-boundary">
       <router-outlet />
     </div>
   </main>
 
-  <!-- Pie de pagina -->
+  <!-- Barra de navegacion inferior fija exclusiva para pantallas moviles -->
+  <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
+    <a routerLink="/dashboard" routerLinkActive="active" class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" />
+        <rect x="14" y="3" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" />
+      </svg>
+      <span>Monitor</span>
+    </a>
+
+    <a routerLink="/history" routerLinkActive="active" class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+      <span>Historial</span>
+    </a>
+
+    <a routerLink="/settings" routerLinkActive="active" class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+      <span>Ajustes</span>
+    </a>
+  </nav>
+
+  <!-- Pie de pagina en escritorio -->
   <footer class="app-footer">
-    <div class="footer-content">
+    <div class="footer-inner">
       <span>UPN Trujillo · Arquitectura del Computador</span>
-      <span>Sistema de Control y Monitoreo de Tanque Inteligente · {{ year }}</span>
+      <span>Telemetria Industrial y Sanitaria · {{ year }}</span>
     </div>
   </footer>
 </div>

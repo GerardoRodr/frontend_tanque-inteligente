@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { HistorialTanque } from '../../core/models/tanque.model';
@@ -7,40 +7,39 @@ import { HistorialTanque } from '../../core/models/tanque.model';
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DecimalPipe, DatePipe],
   template: `
-    <div class="history-wrapper">
-      <!-- Encabezado con controles y exportacion -->
-      <header class="history-header">
-        <div class="header-info">
-          <h2>Historial de Telemetria del Tanque</h2>
-          <p class="subtitle">
-            Series temporales registradas en Supabase por el ESP32 (muestreo cada 15 s)
-          </p>
+    <div class="scada-history">
+      <!-- Barra superior de control de telemetria -->
+      <section class="history-toolbar">
+        <div class="toolbar-left">
+          <span class="toolbar-tag">SERIES TEMPORALES</span>
+          <span class="toolbar-title">Registro Historico (15s)</span>
         </div>
 
-        <div class="header-actions">
-          <!-- Selector de limite de registros -->
-          <div class="limit-selector">
-            <label for="limite">Mostrar:</label>
+        <div class="toolbar-right">
+          <!-- Selector de limite -->
+          <div class="limit-box">
+            <label for="limite">Muestras:</label>
             <select
               id="limite"
               [ngModel]="limiteSeleccionado()"
               (ngModelChange)="cambiarLimite($event)"
             >
-              <option [value]="10">10 registros</option>
-              <option [value]="25">25 registros</option>
-              <option [value]="50">50 registros</option>
-              <option [value]="100">100 registros</option>
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+              <option [value]="100">100</option>
             </select>
           </div>
 
           <!-- Boton de recarga -->
           <button
             type="button"
-            class="btn-action"
+            class="action-btn"
             (click)="recargar()"
             [disabled]="supabase.cargandoHistorial()"
+            aria-label="Recargar registros"
           >
             <svg
               viewBox="0 0 24 24"
@@ -52,135 +51,109 @@ import { HistorialTanque } from '../../core/models/tanque.model';
               <path d="M23 4v6h-6M1 20v-6h6" />
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
             </svg>
-            <span>Recargar</span>
+            <span class="btn-text">Recargar</span>
           </button>
 
-          <!-- Botones de exportacion -->
+          <!-- Exportacion CSV -->
           <button
             type="button"
-            class="btn-export"
+            class="action-btn btn-export"
             (click)="exportarCSV()"
             [disabled]="historial().length === 0"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
             </svg>
-            <span>Descargar CSV</span>
-          </button>
-
-          <button
-            type="button"
-            class="btn-export-sec"
-            (click)="exportarJSON()"
-            [disabled]="historial().length === 0"
-          >
-            <span>JSON</span>
+            <span>CSV</span>
           </button>
         </div>
-      </header>
+      </section>
 
-      <!-- Fila de resumen de estadisticas de los registros cargados -->
-      <div class="stats-row">
-        <div class="stat-pill">
-          <span class="label">Registros cargados:</span>
-          <strong>{{ historial().length }}</strong>
+      <!-- Fila de resumen estadistico de la muestra -->
+      <section class="stats-strip">
+        <div class="stat-item">
+          <span class="stat-label">Muestras:</span>
+          <span class="stat-num mono-val">{{ historial().length }}</span>
         </div>
-        <div class="stat-pill">
-          <span class="label">Nivel promedio:</span>
-          <strong>{{ promedioNivel() | number:'1.1-1' }}%</strong>
+        <div class="stat-item">
+          <span class="stat-label">Nivel promedio:</span>
+          <span class="stat-num mono-val">{{ promedioNivel() | number:'1.1-1' }}%</span>
         </div>
-        <div class="stat-pill">
-          <span class="label">Turbidez promedio:</span>
-          <strong>{{ promedioTurbidez() | number:'1.2-2' }} UNT</strong>
+        <div class="stat-item">
+          <span class="stat-label">Turbidez promedio:</span>
+          <span class="stat-num mono-val">{{ promedioTurbidez() | number:'1.2-2' }} UNT</span>
         </div>
-        <div class="stat-pill">
-          <span class="label">Total con alerta:</span>
-          <strong [class.danger-text]="totalAlertas() > 0">{{ totalAlertas() }}</strong>
+        <div class="stat-item">
+          <span class="stat-label">Con alarma:</span>
+          <span class="stat-num mono-val" [class.danger]="totalAlertas() > 0">{{ totalAlertas() }}</span>
         </div>
-      </div>
+      </section>
 
-      <!-- Tabla de telemetria -->
-      <div class="table-container">
-        @if (supabase.cargandoHistorial()) {
-          <div class="loading-state">
-            <div class="spinner"></div>
-            <span>Consultando datos historicos en Supabase...</span>
-          </div>
-        } @else if (historial().length === 0) {
-          <div class="empty-state">
-            <p>No se encontraron registros de telemetria en la tabla historial_tanque.</p>
-          </div>
-        } @else {
-          <table class="telemetry-table">
+      @if (supabase.cargandoHistorial()) {
+        <div class="loading-box">
+          <div class="spinner"></div>
+          <span>Descargando serie temporal desde Supabase...</span>
+        </div>
+      } @else if (historial().length === 0) {
+        <div class="empty-box">
+          <span>No hay lecturas registradas en public.historial_tanque</span>
+        </div>
+      } @else {
+        <!-- Vista Desktop: Tabla compacta de datos SCADA -->
+        <div class="desktop-table-container">
+          <table class="data-table">
             <thead>
               <tr>
-                <th>Fecha y Hora</th>
+                <th>Timestamp (UTC)</th>
                 <th>Nivel</th>
                 <th>Litros</th>
                 <th>Turbidez</th>
                 <th>Tapa</th>
                 <th>Flujo</th>
                 <th>Autonomia</th>
-                <th>Alertas</th>
+                <th>Alarmas</th>
               </tr>
             </thead>
             <tbody>
               @for (row of historial(); track row.id) {
                 <tr>
-                  <td class="cell-time">
+                  <td class="mono-val cell-time">
                     {{ row.created_at | date:'yyyy-MM-dd HH:mm:ss' }}
                   </td>
-
                   <td>
-                    <div class="level-cell">
-                      <div class="mini-bar">
-                        <div class="mini-bar-fill" [style.width.%]="row.porcentaje_nivel"></div>
+                    <div class="level-bar-cell">
+                      <div class="bar-track">
+                        <div class="bar-fill" [style.width.%]="row.porcentaje_nivel"></div>
                       </div>
-                      <span>{{ row.porcentaje_nivel }}%</span>
+                      <span class="mono-val">{{ row.porcentaje_nivel }}%</span>
                     </div>
                   </td>
-
-                  <td>{{ row.litros_disponibles }} L</td>
-
+                  <td class="mono-val">{{ row.litros_disponibles }} L</td>
                   <td>
                     <span
-                      class="turb-badge"
-                      [class.turb-danger]="row.turbidez_ntu > 5.0 || row.alerta_turbidez_alta"
-                      [class.turb-warn]="row.turbidez_ntu > 2.5 && row.turbidez_ntu <= 5.0"
+                      class="turb-pill mono-val"
+                      [class.danger]="row.turbidez_ntu > 5.0 || row.alerta_turbidez_alta"
+                      [class.warn]="row.turbidez_ntu > 2.5 && row.turbidez_ntu <= 5.0"
                     >
                       {{ row.turbidez_ntu }} UNT
                     </span>
                   </td>
-
                   <td>
-                    <span class="badge" [class.badge-danger]="row.tapa_abierta" [class.badge-success]="!row.tapa_abierta">
-                      {{ row.tapa_abierta ? 'Abierta' : 'Cerrada' }}
+                    <span class="status-tag" [class.danger]="row.tapa_abierta">
+                      {{ row.tapa_abierta ? 'ABIERTA' : 'CERRADA' }}
                     </span>
                   </td>
-
-                  <td>{{ row.tasa_consumo_l_h }} L/h</td>
-
-                  <td>{{ row.dias_autonomia }} d</td>
-
+                  <td class="mono-val">{{ row.tasa_consumo_l_h }} L/h</td>
+                  <td class="mono-val">{{ row.dias_autonomia }} d</td>
                   <td>
-                    <div class="alerts-chips">
-                      @if (row.alerta_nivel_bajo) {
-                        <span class="chip chip-crit" title="Nivel bajo">Nivel</span>
-                      }
-                      @if (row.alerta_tapa_abierta) {
-                        <span class="chip chip-crit" title="Tapa abierta">Tapa</span>
-                      }
-                      @if (row.alerta_turbidez_alta) {
-                        <span class="chip chip-crit" title="Turbidez alta">Turbidez</span>
-                      }
-                      @if (row.alerta_fuga) {
-                        <span class="chip chip-warn" title="Posible fuga">Fuga</span>
-                      }
-                      @if (row.alerta_estancada) {
-                        <span class="chip chip-warn" title="Agua estancada">Estancada</span>
-                      }
+                    <div class="chips-row">
+                      @if (row.alerta_nivel_bajo) { <span class="chip crit">Nivel</span> }
+                      @if (row.alerta_tapa_abierta) { <span class="chip crit">Tapa</span> }
+                      @if (row.alerta_turbidez_alta) { <span class="chip crit">Turbidez</span> }
+                      @if (row.alerta_fuga) { <span class="chip warn">Fuga</span> }
+                      @if (row.alerta_estancada) { <span class="chip warn">Estancada</span> }
                       @if (!row.alerta_nivel_bajo && !row.alerta_tapa_abierta && !row.alerta_turbidez_alta && !row.alerta_fuga && !row.alerta_estancada) {
-                        <span class="chip chip-ok">OK</span>
+                        <span class="chip ok">OK</span>
                       }
                     </div>
                   </td>
@@ -188,104 +161,170 @@ import { HistorialTanque } from '../../core/models/tanque.model';
               }
             </tbody>
           </table>
-        }
-      </div>
+        </div>
+
+        <!-- Vista Movil: Lista responsiva de tarjetas de telemetria -->
+        <div class="mobile-logs-list">
+          @for (row of historial(); track row.id) {
+            <article class="mobile-log-card">
+              <div class="card-head">
+                <span class="log-time mono-val">{{ row.created_at | date:'HH:mm:ss · dd/MM' }}</span>
+                <span
+                  class="turb-pill mono-val"
+                  [class.danger]="row.turbidez_ntu > 5.0 || row.alerta_turbidez_alta"
+                  [class.warn]="row.turbidez_ntu > 2.5 && row.turbidez_ntu <= 5.0"
+                >
+                  {{ row.turbidez_ntu }} UNT
+                </span>
+              </div>
+
+              <div class="card-metrics-row">
+                <div class="m-metric">
+                  <span class="m-label">Nivel</span>
+                  <strong class="m-val mono-val">{{ row.porcentaje_nivel }}%</strong>
+                  <span class="m-sub mono-val">({{ row.litros_disponibles }} L)</span>
+                </div>
+
+                <div class="m-metric">
+                  <span class="m-label">Tapa</span>
+                  <span class="status-tag" [class.danger]="row.tapa_abierta">
+                    {{ row.tapa_abierta ? 'ABIERTA' : 'CERRADA' }}
+                  </span>
+                </div>
+
+                <div class="m-metric">
+                  <span class="m-label">Flujo</span>
+                  <strong class="m-val mono-val">{{ row.tasa_consumo_l_h }} L/h</strong>
+                </div>
+
+                <div class="m-metric">
+                  <span class="m-label">Autonomia</span>
+                  <strong class="m-val mono-val">{{ row.dias_autonomia }} d</strong>
+                </div>
+              </div>
+
+              <div class="card-alerts-strip">
+                <div class="chips-row">
+                  @if (row.alerta_nivel_bajo) { <span class="chip crit">Nivel Bajo</span> }
+                  @if (row.alerta_tapa_abierta) { <span class="chip crit">Tapa Abierta</span> }
+                  @if (row.alerta_turbidez_alta) { <span class="chip crit">Turbidez >5</span> }
+                  @if (row.alerta_fuga) { <span class="chip warn">Sospecha Fuga</span> }
+                  @if (row.alerta_estancada) { <span class="chip warn">Agua Estancada</span> }
+                  @if (!row.alerta_nivel_bajo && !row.alerta_tapa_abierta && !row.alerta_turbidez_alta && !row.alerta_fuga && !row.alerta_estancada) {
+                    <span class="chip ok">Parametros Nominales OK</span>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
     </div>
   `,
   styles: [`
-    .history-wrapper {
+    .scada-history {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 12px;
       width: 100%;
     }
 
-    .history-header {
+    .history-toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
       flex-wrap: wrap;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border-color, #334155);
     }
 
-    .header-info h2 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.02em;
-    }
-
-    .subtitle {
-      margin: 4px 0 0;
-      font-size: 0.875rem;
-      color: var(--text-muted, #94a3b8);
-    }
-
-    .header-actions {
+    .toolbar-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
+    }
+
+    .toolbar-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 3px;
+      background-color: var(--bg-surface-raised);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-medium);
+    }
+
+    .toolbar-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
-    .limit-selector {
+    .limit-box {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.85rem;
-      color: var(--text-muted, #94a3b8);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
     }
 
-    .limit-selector select {
-      background: #1e293b;
-      border: 1px solid var(--border-color, #334155);
-      color: #ffffff;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 0.85rem;
+    .limit-box select {
+      background-color: var(--bg-surface-raised);
+      border: 1px solid var(--border-medium);
+      color: var(--text-primary);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      min-height: 32px;
     }
 
-    .btn-action, .btn-export, .btn-export-sec {
+    .action-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 7px 14px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      background-color: var(--bg-surface-raised);
+      border: 1px solid var(--border-medium);
+      color: var(--text-primary);
+      font-size: 0.75rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s;
+      min-height: 32px;
+      transition: background-color 0.15s ease;
     }
 
-    .btn-action {
-      background: #334155;
-      color: #ffffff;
+    .action-btn:hover:not(:disabled) {
+      background-color: var(--bg-surface-hover);
     }
-    .btn-action:hover:not(:disabled) {
-      background: #475569;
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .action-btn svg {
+      width: 14px;
+      height: 14px;
     }
 
     .btn-export {
-      background: #0284c7;
-      color: #ffffff;
-    }
-    .btn-export:hover:not(:disabled) {
-      background: #0369a1;
-    }
-
-    .btn-export-sec {
-      background: rgba(56, 189, 248, 0.15);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      color: #38bdf8;
-    }
-
-    .btn-action svg, .btn-export svg {
-      width: 16px;
-      height: 16px;
+      background-color: var(--status-info-bg);
+      border-color: var(--status-info-border);
+      color: var(--status-info);
+      font-weight: 600;
     }
 
     .spinning {
@@ -296,181 +335,272 @@ import { HistorialTanque } from '../../core/models/tanque.model';
       100% { transform: rotate(360deg); }
     }
 
-    .stats-row {
+    .stats-strip {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
       flex-wrap: wrap;
     }
 
-    .stat-pill {
-      background: var(--card-bg, #1e293b);
-      border: 1px solid var(--border-color, #334155);
-      padding: 8px 14px;
-      border-radius: 10px;
+    .stat-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 0.85rem;
+      gap: 6px;
+      font-size: 0.75rem;
     }
 
-    .stat-pill .label {
-      color: var(--text-muted, #94a3b8);
+    .stat-label {
+      color: var(--text-tertiary);
     }
 
-    .danger-text {
-      color: #ef4444;
+    .stat-num {
+      color: var(--text-primary);
+      font-weight: 600;
     }
 
-    .table-container {
-      background: var(--card-bg, #1e293b);
-      border: 1px solid var(--border-color, #334155);
-      border-radius: 14px;
+    .stat-num.danger {
+      color: var(--status-crit);
+    }
+
+    /* Tabla SCADA para pantallas de escritorio */
+    .desktop-table-container {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: 6px;
       overflow-x: auto;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
 
-    .telemetry-table {
+    .data-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.875rem;
+      font-size: 0.78rem;
       text-align: left;
     }
 
-    .telemetry-table th {
-      padding: 12px 16px;
-      background: rgba(15, 23, 42, 0.7);
-      color: var(--text-muted, #94a3b8);
+    .data-table th {
+      padding: 8px 12px;
+      background-color: var(--bg-surface-raised);
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
       font-weight: 600;
       text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--border-color, #334155);
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border-medium);
       white-space: nowrap;
     }
 
-    .telemetry-table td {
-      padding: 12px 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      color: #ffffff;
+    .data-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-primary);
       white-space: nowrap;
     }
 
-    .telemetry-table tr:hover {
-      background: rgba(255, 255, 255, 0.02);
+    .data-table tr:hover {
+      background-color: rgba(255, 255, 255, 0.02);
     }
 
     .cell-time {
-      font-family: monospace;
-      font-size: 0.8rem;
-      color: var(--text-muted, #94a3b8);
+      font-size: 0.72rem;
+      color: var(--text-secondary);
     }
 
-    .level-cell {
+    .level-bar-cell {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .mini-bar {
-      width: 50px;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 9999px;
+    .bar-track {
+      width: 44px;
+      height: 5px;
+      background-color: var(--border-medium);
+      border-radius: 2px;
       overflow: hidden;
     }
 
-    .mini-bar-fill {
+    .bar-fill {
       height: 100%;
-      background: #38bdf8;
-      border-radius: 9999px;
+      background-color: var(--water-clean);
+      border-radius: 2px;
     }
 
-    .turb-badge {
+    .turb-pill {
       display: inline-block;
-      padding: 2px 8px;
-      border-radius: 9999px;
-      font-size: 0.775rem;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.7rem;
       font-weight: 600;
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background-color: var(--status-normal-bg);
+      border: 1px solid var(--status-normal-border);
+      color: var(--status-normal);
     }
 
-    .turb-badge.turb-danger {
-      background: rgba(239, 68, 68, 0.15);
-      color: #ef4444;
-      border-color: rgba(239, 68, 68, 0.3);
+    .turb-pill.warn {
+      background-color: var(--status-warn-bg);
+      border-color: var(--status-warn-border);
+      color: var(--status-warn);
     }
 
-    .turb-badge.turb-warn {
-      background: rgba(245, 158, 11, 0.15);
-      color: #f59e0b;
-      border-color: rgba(245, 158, 11, 0.3);
+    .turb-pill.danger {
+      background-color: var(--status-crit-bg);
+      border-color: var(--status-crit-border);
+      color: var(--status-crit);
     }
 
-    .badge {
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.775rem;
+    .status-tag {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
       font-weight: 600;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background-color: var(--status-normal-bg);
+      color: var(--status-normal);
     }
 
-    .badge-success {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
+    .status-tag.danger {
+      background-color: var(--status-crit-bg);
+      color: var(--status-crit);
     }
 
-    .badge-danger {
-      background: rgba(239, 68, 68, 0.15);
-      color: #ef4444;
-    }
-
-    .alerts-chips {
+    .chips-row {
       display: flex;
       gap: 4px;
       flex-wrap: wrap;
     }
 
     .chip {
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.7rem;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
       font-weight: 600;
     }
 
-    .chip-crit {
-      background: rgba(239, 68, 68, 0.2);
-      color: #ef4444;
+    .chip.crit {
+      background-color: var(--status-crit-bg);
+      color: var(--status-crit);
+      border: 1px solid var(--status-crit-border);
     }
 
-    .chip-warn {
-      background: rgba(245, 158, 11, 0.2);
-      color: #f59e0b;
+    .chip.warn {
+      background-color: var(--status-warn-bg);
+      color: var(--status-warn);
+      border: 1px solid var(--status-warn-border);
     }
 
-    .chip-ok {
-      background: rgba(16, 185, 129, 0.2);
-      color: #10b981;
+    .chip.ok {
+      background-color: var(--bg-surface-raised);
+      color: var(--text-tertiary);
     }
 
-    .loading-state, .empty-state {
-      padding: 48px;
+    /* Vista de tarjetas para movil */
+    .mobile-logs-list {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mobile-log-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .log-time {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+    }
+
+    .card-metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .m-metric {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .m-label {
+      font-size: 0.62rem;
+      font-family: var(--font-mono);
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+    }
+
+    .m-val {
+      font-size: 0.8rem;
+      color: var(--text-primary);
+    }
+
+    .m-sub {
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+    }
+
+    .card-alerts-strip {
+      padding-top: 4px;
+      border-top: 1px dashed var(--border-subtle);
+    }
+
+    .loading-box, .empty-box {
+      padding: 32px 16px;
       text-align: center;
-      color: var(--text-muted, #94a3b8);
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
     }
 
     .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      border-top-color: #38bdf8;
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border-medium);
+      border-top-color: var(--status-info);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
+    }
+
+    /* Media query: Alternar tabla desktop por lista movil */
+    @media (max-width: 768px) {
+      .desktop-table-container {
+        display: none;
+      }
+      .mobile-logs-list {
+        display: flex;
+      }
+      .btn-text {
+        display: none;
+      }
+      .toolbar-title {
+        font-size: 0.78rem;
+      }
     }
   `]
 })
@@ -546,19 +676,6 @@ export class HistoryComponent {
     const link = document.createElement('a');
     link.href = url;
     link.download = `telemetria_tanque_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  exportarJSON(): void {
-    const data = this.historial();
-    if (data.length === 0) return;
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `telemetria_tanque_${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }

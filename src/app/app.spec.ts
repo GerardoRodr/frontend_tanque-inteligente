@@ -20,6 +20,6 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.brand-name')?.textContent).toContain('Tanque Inteligente IoT');
+    expect(compiled.querySelector('.brand-title')?.textContent).toContain('Tanque Inteligente IoT');
   });
 });
