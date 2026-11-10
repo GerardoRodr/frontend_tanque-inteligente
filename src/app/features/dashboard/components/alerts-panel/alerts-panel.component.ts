@@ -13,7 +13,6 @@ import { AlertaItem } from '../../../../core/models/tanque.model';
         </div>
 
         <div class="alarm-counter" [class.has-alarms]="alertas().length > 0">
-          <span class="counter-pip"></span>
           <span>{{ alertas().length }} {{ alertas().length === 1 ? 'alarma activa' : 'alarmas activas' }}</span>
         </div>
       </div>
@@ -35,7 +34,6 @@ import { AlertaItem } from '../../../../core/models/tanque.model';
         </div>
       } @else {
         <div class="all-clear-box">
-          <span class="clear-pip"></span>
           <div class="clear-text">
             <strong>Parametros sanitarios dentro de rango</strong>
             <span>Sin alarmas criticas de desabastecimiento, turbidez, vectores ni fugas.</span>
@@ -120,13 +118,6 @@ import { AlertaItem } from '../../../../core/models/tanque.model';
       color: var(--status-crit);
     }
 
-    .counter-pip {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: currentColor;
-    }
-
     .active-alarms-list {
       display: flex;
       flex-direction: column;
@@ -190,15 +181,8 @@ import { AlertaItem } from '../../../../core/models/tanque.model';
       border-radius: 5px;
       background-color: var(--status-normal-bg);
       border: 1px solid var(--status-normal-border);
+      border-left: 3px solid var(--status-normal);
       color: var(--status-normal);
-    }
-
-    .clear-pip {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--status-normal);
-      flex-shrink: 0;
     }
 
     .clear-text {

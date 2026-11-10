@@ -16,7 +16,6 @@ import { DecimalPipe } from '@angular/common';
 
         <!-- Estado del sensor magnetico de tapa MC-38 -->
         <div class="lid-badge" [class.lid-open]="tapaAbierta()">
-          <span class="lid-pip"></span>
           <span class="lid-label">Tapa: <strong>{{ tapaAbierta() ? 'ABIERTA' : 'CERRADA' }}</strong></span>
           @if (tapaAbierta() && segundosTapaAbierta() > 0) {
             <span class="lid-secs">({{ segundosTapaAbierta() }}s)</span>
@@ -81,8 +80,7 @@ import { DecimalPipe } from '@angular/common';
 
           <!-- Base inferior: Sonda de turbidez TS-300B -->
           <div class="probe-bottom" title="Sensor Optico Turbidez TS-300B (IO14 ADC2)">
-            <span class="probe-dot" [style.background]="colorCalidad()"></span>
-            <span class="probe-label">TS-300B: {{ turbidez() | number:'1.2-2' }} UNT</span>
+            <span class="probe-label" [style.color]="colorCalidad()">TS-300B: {{ turbidez() | number:'1.2-2' }} UNT</span>
           </div>
         </div>
       </div>
@@ -167,23 +165,10 @@ import { DecimalPipe } from '@angular/common';
       background-color: var(--status-crit-bg);
       border-color: var(--status-crit-border);
       color: var(--status-crit);
-      animation: alert-blink 1.5s infinite;
-    }
-
-    .lid-pip {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: currentColor;
     }
 
     .lid-secs {
       opacity: 0.85;
-    }
-
-    @keyframes alert-blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
     }
 
     .scada-visual-container {
@@ -334,12 +319,6 @@ import { DecimalPipe } from '@angular/common';
       justify-content: center;
       gap: 6px;
       z-index: 5;
-    }
-
-    .probe-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
     }
 
     .tank-specs-grid {

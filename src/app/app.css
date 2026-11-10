@@ -108,7 +108,7 @@
   border-bottom: 2px solid var(--status-info);
 }
 
-/* Indicador de estado en tiempo real */
+/* Indicador de estado de canal */
 .header-status {
   display: flex;
   align-items: center;
@@ -117,7 +117,6 @@
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   padding: 4px 10px;
   border-radius: 4px;
   background-color: var(--status-warn-bg);
@@ -129,26 +128,9 @@
 }
 
 .status-indicator.live {
-  background-color: var(--status-normal-bg);
-  border-color: var(--status-normal-border);
-  color: var(--status-normal);
-}
-
-.status-pip {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: currentColor;
-}
-
-.status-indicator.live .status-pip {
-  box-shadow: 0 0 6px var(--status-normal);
-  animation: pulse-dot 2s infinite ease-in-out;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  background-color: var(--status-info-bg);
+  border-color: var(--status-info-border);
+  color: var(--status-info);
 }
 
 /* Contenido central */

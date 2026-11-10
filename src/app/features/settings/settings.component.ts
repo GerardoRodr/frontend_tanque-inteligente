@@ -21,7 +21,6 @@ import { environment } from '../../../environments/environment';
 
       @if (mensajeGuardado()) {
         <div class="save-toast" role="status">
-          <span class="toast-pip"></span>
           <span>{{ mensajeGuardado() }}</span>
         </div>
       }
@@ -205,15 +204,9 @@ import { environment } from '../../../environments/environment';
       border-radius: 5px;
       background-color: var(--status-normal-bg);
       border: 1px solid var(--status-normal-border);
+      border-left: 3px solid var(--status-normal);
       color: var(--status-normal);
       font-size: 0.8rem;
-    }
-
-    .toast-pip {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: var(--status-normal);
     }
 
     .settings-grid {

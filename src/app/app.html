@@ -50,8 +50,7 @@
           [class.live]="supabase.conectadoRealtime()"
           [title]="supabase.conectadoRealtime() ? 'Socket Supabase activo' : 'Sondeo periodico activo'"
         >
-          <span class="status-pip"></span>
-          <span class="status-label">{{ supabase.conectadoRealtime() ? 'EN VIVO' : 'SONDEO' }}</span>
+          <span class="status-label">{{ supabase.conectadoRealtime() ? 'Canal: WebSocket' : 'Canal: Sondeo' }}</span>
         </div>
       </div>
     </div>

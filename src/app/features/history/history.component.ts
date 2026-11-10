@@ -104,7 +104,7 @@ import { HistorialTanque } from '../../core/models/tanque.model';
           <table class="data-table">
             <thead>
               <tr>
-                <th>Timestamp (UTC)</th>
+                <th>Fecha y Hora (Peru)</th>
                 <th>Nivel</th>
                 <th>Litros</th>
                 <th>Turbidez</th>
@@ -118,7 +118,7 @@ import { HistorialTanque } from '../../core/models/tanque.model';
               @for (row of historial(); track row.id) {
                 <tr>
                   <td class="mono-val cell-time">
-                    {{ row.created_at | date:'yyyy-MM-dd HH:mm:ss' }}
+                    {{ row.created_at | date:'yyyy-MM-dd HH:mm:ss':'-0500' }}
                   </td>
                   <td>
                     <div class="level-bar-cell">
@@ -168,7 +168,7 @@ import { HistorialTanque } from '../../core/models/tanque.model';
           @for (row of historial(); track row.id) {
             <article class="mobile-log-card">
               <div class="card-head">
-                <span class="log-time mono-val">{{ row.created_at | date:'HH:mm:ss · dd/MM' }}</span>
+                <span class="log-time mono-val">{{ row.created_at | date:'HH:mm:ss · dd/MM':'-0500' }}</span>
                 <span
                   class="turb-pill mono-val"
                   [class.danger]="row.turbidez_ntu > 5.0 || row.alerta_turbidez_alta"
@@ -645,30 +645,42 @@ export class HistoryComponent {
     if (data.length === 0) return;
 
     const headers = [
-      'id', 'created_at', 'distancia_cm', 'altura_agua_cm', 'litros_disponibles',
+      'id', 'fecha_hora_peru', 'created_at_utc', 'distancia_cm', 'altura_agua_cm', 'litros_disponibles',
       'porcentaje_nivel', 'turbidez_ntu', 'tapa_abierta', 'tasa_consumo_l_h',
       'dias_autonomia', 'horas_almacenada', 'alerta_nivel_bajo',
       'alerta_tapa_abierta', 'alerta_turbidez_alta', 'alerta_fuga', 'alerta_estancada'
     ];
 
-    const filas = data.map(row => [
-      row.id,
-      `"${row.created_at}"`,
-      row.distancia_cm,
-      row.altura_agua_cm,
-      row.litros_disponibles,
-      row.porcentaje_nivel,
-      row.turbidez_ntu,
-      row.tapa_abierta,
-      row.tasa_consumo_l_h,
-      row.dias_autonomia,
-      row.horas_almacenada,
-      row.alerta_nivel_bajo,
-      row.alerta_tapa_abierta,
-      row.alerta_turbidez_alta,
-      row.alerta_fuga,
-      row.alerta_estancada
-    ].join(','));
+    const filas = data.map(row => {
+      const fechaPeru = new Date(row.created_at).toLocaleString('es-PE', {
+        timeZone: 'America/Lima',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      return [
+        row.id,
+        `"${fechaPeru}"`,
+        `"${row.created_at}"`,
+        row.distancia_cm,
+        row.altura_agua_cm,
+        row.litros_disponibles,
+        row.porcentaje_nivel,
+        row.turbidez_ntu,
+        row.tapa_abierta,
+        row.tasa_consumo_l_h,
+        row.dias_autonomia,
+        row.horas_almacenada,
+        row.alerta_nivel_bajo,
+        row.alerta_tapa_abierta,
+        row.alerta_turbidez_alta,
+        row.alerta_fuga,
+        row.alerta_estancada
+      ].join(',');
+    });
 
     const csvContent = [headers.join(','), ...filas].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

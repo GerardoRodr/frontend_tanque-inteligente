@@ -23,14 +23,13 @@ import { AlertsPanelComponent } from './components/alerts-panel/alerts-panel.com
       <section class="station-toolbar">
         <div class="toolbar-left">
           <div class="node-badge">
-            <span class="node-dot" [class.active]="supabase.conectadoRealtime()"></span>
             <span class="node-name">AI-Thinker ESP32-CAM</span>
             <span class="node-id">#ID: 01</span>
           </div>
 
           <div class="sync-time mono-val">
             @if (estado()?.updated_at) {
-              Sync: {{ estado()?.updated_at | date:'HH:mm:ss' }} UTC
+              Sync: {{ estado()?.updated_at | date:'HH:mm:ss':'-0500' }} (Peru)
             } @else {
               Esperando enlace...
             }
@@ -250,18 +249,6 @@ import { AlertsPanelComponent } from './components/alerts-panel/alerts-panel.com
       gap: 6px;
       font-size: 0.8rem;
       font-weight: 600;
-    }
-
-    .node-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--status-warn);
-    }
-
-    .node-dot.active {
-      background-color: var(--status-normal);
-      box-shadow: 0 0 6px var(--status-normal);
     }
 
     .node-name {
